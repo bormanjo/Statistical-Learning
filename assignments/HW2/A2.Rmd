@@ -1,0 +1,258 @@
+---
+output: pdf_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+
+
+# FE590.  Assignment #2.
+
+
+## `r format(Sys.time(), "%Y-%m-%d")`
+
+
+
+
+# Instructions
+In this assignment, you should use R markdown to answer the questions below. Simply type your R code into embedded chunks as shown above.
+When you have completed the assignment, knit the document into a PDF file, and upload both the .pdf and .Rmd files to Canvas.
+```{r}
+CWID = -1 #Place here your Campus wide ID number, this will personalize
+#your results, but still maintain the reproduceable nature of using seeds.
+#If you ever need to reset the seed in this assignment, use this as your seed
+#Papers that use -1 as this CWID variable will earn 0's so make sure you change
+#this value before you submit your work.
+personal = CWID %% 10000
+set.seed(personal)#You can reset the seed at any time in your code, but please always set it to this seed.
+```
+# Question 1 
+Use the Auto data set from the textbook's website. When reading the data, use the options as.is = TRUE
+and na.strings="?". Remove the unavailable data using the na.omit() function.
+
+```{r}
+#insert r code here
+```
+
+
+## 1. List the names of the variables in the data set.
+
+```{r}
+#insert r code here
+```
+
+
+## 2. The columns origin and name are unimportant variables. Create a new data frame called cars that contains none of these unimportant variables
+
+```{r}
+#insert r code here
+```
+
+## 3. What is the range of each quantitative variable? Answer this question using the range() function with the sapply() function e.g., sapply(cars, range). Print a simple table of the ranges of the variables. The rows should correspond to the variables. The first column should be the lowest value of the corresponding variable, and the second column should be the maximum value of the variable. The columns should be suitably labeled.
+
+```{r}
+#insert r code here
+```
+
+## 4. What is the mean and standard deviation of each variable? Create a simple table of the means and standard deviations.
+
+```{r}
+#insert r code here
+```
+
+## 5. Create a scatterplot matrix that includes the variables mpg, displacement, horsepower, weight, and acceleration using the pairs() function.
+
+```{r}
+#insert r code here
+```
+
+## 6.  Using the regsubsets function in the leaps library, regress mpg onto
+
+\begin{itemize}
+
+\item displacement
+\item horsepower
+\item weight
+\item acceleration
+
+\end{itemize}
+
+```{r}
+#insert r code here
+```
+
+## 7. Print a table showing what variables would be selected using best subset selection for all predictors (displacement, horsepower, weight, acceleration) up to order 2 (i.e. weight and weight^2).
+
+```{r}
+#insert r code here
+```
+
+### a. What is the most important variable affecting fuel consumption?
+
+```{r}
+#insert r code here
+```
+
+### b. What is the second most important variable affecting fuel consumption?
+
+```{r}
+#insert r code here
+```
+
+### c. What is the third most important variable affecting fuel consumption?
+
+```{r}
+#insert r code here
+```
+
+
+
+# Question 2 
+
+This exercise involves the Boston housing data set.
+
+## 1. Load in the Boston data set, which is part of the MASS library in R. The data set is contained in the object Boston. Read about the data set using the command ?Boston. How many rows are in this data set? How many columns? What do the rows and columns represent?
+
+```{r}
+#insert r code here
+```
+
+
+## 2. Do any of the suburbs of Boston appear to have particularly high crime rates?
+
+
+```{r}
+#insert r code here
+```
+
+## Tax rates?
+
+```{r}
+#insert r code here
+```
+
+## Pupil-teacher ratios?
+
+```{r}
+#insert r code here
+```
+
+## Comment on the range of each predictor.
+
+## 3. How many of the suburbs in this data set bound the Charles river?
+
+```{r}
+#insert r code here
+```
+
+## 4. What is the median pupil-teacher ratio among the towns in this data set?
+
+```{r}
+#insert r code here
+```
+
+
+## 5. In this data set, how many of the suburbs average more than seven rooms per dwelling?
+
+```{r}
+#insert r code here
+```
+
+## More than eight rooms per dwelling?
+
+```{r}
+#insert r code here
+```
+
+
+
+# Question 3 
+
+This question should be answered using the Weekly data set, which is part of the ISLR package. This data contains 1,089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
+
+## 1. What does the data represent?
+
+```{r}
+#insert r code here
+```
+
+
+
+## 2. Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+```{r}
+#insert r code here
+```
+
+
+
+
+## 3. Fit a logistic regression model using a training data period from 1990 to 2008, using the predictors from the previous problem that you determined were statistically significant. Test your model on the held out data (that is, the data from 2009 and 2010) and express its accuracy.
+
+
+```{r}
+#insert r code here
+```
+
+## 4. Repeat Part 3 using LDA.
+
+```{r}
+#insert r code here
+```
+
+
+## 5. Repeat Part 3 using QDA.
+
+```{r}
+#insert r code here
+```
+
+## 6. Repeat Part 3 using KNN with K = 1, 2, 3.
+
+```{r}
+#insert r code here
+```
+
+
+## 7. Which of these methods in Parts 3, 4, 5, and 6 appears to provide the best results on this data?
+
+```{r}
+#insert r code here
+```
+
+
+# Question 4
+
+## Write a function that works in R to gives you the parameters from a linear regression on a data set between two sets of values (in other words you only have to do the 2-D case and your output will be the coefficients beta_0 and beta_1).  Include in the output the standard error of your variables.  You cannot use the lm command in this function or any of the other built in regression models.  For example your output could be a 2x2 matrix with the parameters in the first column and the standard errors in the second column.  For up to 5 bonus points, format your output so that it displays and operates similar in function to the output of the lm command.(i.e. in a data frame that includes all potentially useful outputs)
+
+
+```{r}
+#insert r code here
+```
+
+## Compare the output of your function to that of the lm command in R.
+
+```{r}
+#insert r code here
+```
+# Question 5
+## Using the Advertising data set (Sales, TV, Radio, Newspaper), do the following:
+
+## 1. Randomly split the data into two different pieces of roughly equal size.
+```{r}
+
+```
+## 2. Pick one set to run a linear regression to predict sales based on all TV and Radio, and then test your accuracy using the other set
+```{r}
+
+```
+## 3. Repeat the previous problem using all three predictors (including newspaper).  What do you determine from this result?
+```{r}
+
+```
+## 4. Determine the LOOCV error for the linear regression using all three predictors.
+```{r}
+
+```
