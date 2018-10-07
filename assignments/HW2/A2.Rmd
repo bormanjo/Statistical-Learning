@@ -20,52 +20,68 @@ knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 In this assignment, you should use R markdown to answer the questions below. Simply type your R code into embedded chunks as shown above.
 When you have completed the assignment, knit the document into a PDF file, and upload both the .pdf and .Rmd files to Canvas.
 ```{r}
-CWID = -1 #Place here your Campus wide ID number, this will personalize
+CWID = 10402229 #Place here your Campus wide ID number, this will personalize
 #your results, but still maintain the reproduceable nature of using seeds.
 #If you ever need to reset the seed in this assignment, use this as your seed
 #Papers that use -1 as this CWID variable will earn 0's so make sure you change
 #this value before you submit your work.
 personal = CWID %% 10000
 set.seed(personal)#You can reset the seed at any time in your code, but please always set it to this seed.
+
+library(magrittr) # Piping operators
+
 ```
 # Question 1 
 Use the Auto data set from the textbook's website. When reading the data, use the options as.is = TRUE
 and na.strings="?". Remove the unavailable data using the na.omit() function.
 
 ```{r}
-#insert r code here
+df = read.table("Auto.data", as.is = T, na.strings = "?", header = T)
+df = na.omit(df)
 ```
 
 
 ## 1. List the names of the variables in the data set.
 
 ```{r}
-#insert r code here
+names(df)
 ```
 
 
 ## 2. The columns origin and name are unimportant variables. Create a new data frame called cars that contains none of these unimportant variables
 
 ```{r}
-#insert r code here
+cars = df[, !(colnames(df) %in% c("origin", "name"))]
+names(cars)
 ```
 
 ## 3. What is the range of each quantitative variable? Answer this question using the range() function with the sapply() function e.g., sapply(cars, range). Print a simple table of the ranges of the variables. The rows should correspond to the variables. The first column should be the lowest value of the corresponding variable, and the second column should be the maximum value of the variable. The columns should be suitably labeled.
 
 ```{r}
-#insert r code here
+sapply(cars, range) %>% 
+  t() %>% 
+  set_colnames(c("Min", "Max"))
 ```
 
 ## 4. What is the mean and standard deviation of each variable? Create a simple table of the means and standard deviations.
 
 ```{r}
-#insert r code here
+means <- 
+  cars %>%
+  sapply(mean)
+
+sds <- 
+  cars %>%
+  sapply(sd)
+
+tbl <- rbind(means, sds) %>% t() %>% set_colnames(c("Mean", "Std Dev"))
+tbl
 ```
 
 ## 5. Create a scatterplot matrix that includes the variables mpg, displacement, horsepower, weight, and acceleration using the pairs() function.
 
 ```{r}
-#insert r code here
+pairs(cars[,c("mpg", "displacement", "horsepower", "weight", "acceleration")])
 ```
 
 ## 6.  Using the regsubsets function in the leaps library, regress mpg onto

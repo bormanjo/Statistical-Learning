@@ -18,6 +18,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/ \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 
+RUN R -e "install.packages('ISLR', repos = 'http://cran.us.r-project.org')"
+  
 EXPOSE 8787
 
 CMD ["/usr/lib/rstudio-server/bin/rserver", "--server-daemonize=0", "--server-app-armor-enabled=0"]
