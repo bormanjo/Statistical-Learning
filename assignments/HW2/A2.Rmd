@@ -74,7 +74,11 @@ sds <-
   cars %>%
   sapply(sd)
 
-tbl <- rbind(means, sds) %>% t() %>% set_colnames(c("Mean", "Std Dev"))
+tbl <- 
+  rbind(means, sds) %>% 
+  t() %>% 
+  set_colnames(c("Mean", "Std Dev"))
+
 tbl
 ```
 
@@ -96,34 +100,34 @@ pairs(cars[,c("mpg", "displacement", "horsepower", "weight", "acceleration")])
 \end{itemize}
 
 ```{r}
-#insert r code here
+library(leaps)
+
+model <- leaps::regsubsets(data = cars, mpg ~ displacement + horsepower + weight + acceleration)
 ```
 
 ## 7. Print a table showing what variables would be selected using best subset selection for all predictors (displacement, horsepower, weight, acceleration) up to order 2 (i.e. weight and weight^2).
 
 ```{r}
-#insert r code here
+model <- leaps::regsubsets(data = cars, 
+                        mpg ~ displacement + horsepower + weight + acceleration + poly(displacement, 2) + poly(horsepower, 2) + poly(weight, 2) + poly(acceleration, 2))
+summary(model)$which
 ```
 
 ### a. What is the most important variable affecting fuel consumption?
 
 ```{r}
-#insert r code here
+summary(model)$which %>% apply(2, sum)
 ```
+
+Out of all the models constructed, the displacement^2 was included the most often therefore one could argue that the importance of this variable is reflected in its frequency.
 
 ### b. What is the second most important variable affecting fuel consumption?
 
-```{r}
-#insert r code here
-```
+Based on the previous notion of importance, horsepower and horsepower^2 are tied for the second most important variable.
 
 ### c. What is the third most important variable affecting fuel consumption?
 
-```{r}
-#insert r code here
-```
-
-
+The next most important variable is weight^2. Technically this would be the fourth most important variable, given that two variables are tied for second.
 
 # Question 2 
 
@@ -132,56 +136,80 @@ This exercise involves the Boston housing data set.
 ## 1. Load in the Boston data set, which is part of the MASS library in R. The data set is contained in the object Boston. Read about the data set using the command ?Boston. How many rows are in this data set? How many columns? What do the rows and columns represent?
 
 ```{r}
-#insert r code here
+library(MASS)
+dim(Boston)
 ```
+
+The dimensions of the Boston data set are 506 (rows) by 14 (cols) representing the observations (suburbs) and variables, respectively.
 
 
 ## 2. Do any of the suburbs of Boston appear to have particularly high crime rates?
 
 
 ```{r}
-#insert r code here
+boxplot(Boston$crim)
+Boston$crim %>% is_greater_than(50) %>% sum
 ```
+
+The boxplot above shows a visual representation of the `summary()` function applied to the `crim` variable. There are a number of suburbs (observations) that have crime rates above 50 crimes per capita, specifically 4 suburbs. Note that the number of 50 crimes per capita is an arbitrary number, but to me the rate of 50 crimes per person living in a suburb is a *significantly* high number.
 
 ## Tax rates?
 
 ```{r}
-#insert r code here
+boxplot(Boston$tax)
+Boston$tax %>% is_greater_than(650) %>% sum()
 ```
+
+There are 137 suburbs with tax rates above what is, roughly, the third quantile rate (~650) that can be considered particularly high tax rates
 
 ## Pupil-teacher ratios?
 
 ```{r}
-#insert r code here
+boxplot(Boston$ptratio)
+Boston$ptratio %>% is_greater_than(20) %>% sum
 ```
 
+Using a similar methodology, there are 201 suburbs with a pupil-teacher ratio above 20 (roughly the third quantile). However, as can be seen in the boxplot, there are no extraordinary values in regards to the variable. In my opinion, these pupil-teacher ratios are relatively normal/small.
+
 ## Comment on the range of each predictor.
+
+**Crime Rate** - The crime rate has a very sporadic distribution across a range of values from 0 to over 100.
+
+**Tax Rate** - The tax rate has a very wide distribution ranging from 200 to 700.
+
+**Pupil-Teacher Ratio** - Like the tax rate, the Pupil-Teacher ration has a wide distribution and ranges from ~12 to 22.
 
 ## 3. How many of the suburbs in this data set bound the Charles river?
 
 ```{r}
-#insert r code here
+Boston$chas %>% sum()
 ```
+
+There are 35 along the Charles river.
 
 ## 4. What is the median pupil-teacher ratio among the towns in this data set?
 
 ```{r}
-#insert r code here
+Boston$ptratio %>% median
 ```
 
+The median pupil-teacher ratio is 19.05
 
 ## 5. In this data set, how many of the suburbs average more than seven rooms per dwelling?
 
 ```{r}
-#insert r code here
+Boston %>% subset(rm > 7) %>% nrow()
 ```
+
+There are 64 suburbs that average more than 7 rooms per dwelling.
 
 ## More than eight rooms per dwelling?
 
 ```{r}
-#insert r code here
+Boston %>% subset(rm > 8) %>% nrow()
 ```
 
+There are 13 that average more than 8
 
 
 # Question 3 
@@ -191,25 +219,37 @@ This question should be answered using the Weekly data set, which is part of the
 ## 1. What does the data represent?
 
 ```{r}
-#insert r code here
+library(ISLR)
+summary(Weekly)
 ```
 
-
+The data represents a time series of financial percentage returns containing variables indicating a k-day lag, that is the value of the time series k-days ago. Additionally, it also contains a categorical variable that indicates the direction.
 
 ## 2. Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
 
 ```{r}
-#insert r code here
+model <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = "binomial")
+summary(model)
 ```
 
-
+At the 99% level, the second lag is statistically significant
 
 
 ## 3. Fit a logistic regression model using a training data period from 1990 to 2008, using the predictors from the previous problem that you determined were statistically significant. Test your model on the held out data (that is, the data from 2009 and 2010) and express its accuracy.
 
 
 ```{r}
-#insert r code here
+test <- Weekly[Weekly$Year %in% 2009:2010,]
+train <- Weekly[Weekly$Year %in% 1990:2008,]
+
+model <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = train, family = "binomial")
+summary(model)
+
+pred <- predict(model, test, type = "response") > 50
+pred.vals <-  as.factor(pred)
+summary(pred)
+table(test$Direction, pred.vals)
+
 ```
 
 ## 4. Repeat Part 3 using LDA.
