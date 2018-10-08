@@ -223,7 +223,7 @@ library(ISLR)
 summary(Weekly)
 ```
 
-The data represents a time series of financial percentage returns containing variables indicating a k-day lag, that is the value of the time series k-days ago. Additionally, it also contains a categorical variable that indicates the direction.
+The data represents a time series of financial percentage returns and volume also containing variables indicating a k-day lag, that is the value of the time series k-days ago. Additionally, it also contains a categorical variable that indicates the direction.
 
 ## 2. Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
 
@@ -242,72 +242,234 @@ At the 99% level, the second lag is statistically significant
 test <- Weekly[Weekly$Year %in% 2009:2010,]
 train <- Weekly[Weekly$Year %in% 1990:2008,]
 
-model <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = train, family = "binomial")
-summary(model)
+model.bin <- glm(Direction ~ Lag2, data = train, family = "binomial")
+summary(model.bin)
 
-pred <- predict(model, test, type = "response") > 50
-pred.vals <-  as.factor(pred)
-summary(pred)
-table(test$Direction, pred.vals)
+pred <- predict(model.bin, test, type = "response") > 0.50 # Greater than 50% indicates up
+pred.vals <-  rep("Up", length(pred))
+pred.vals[!pred] <-  rep("Down", sum(!pred))
 
+act.vals <- test$Direction
+tbl <- table(act.vals, pred.vals)
+
+# Confusion Matrix
+tbl
+
+# CM as %
+tbl %>% divide_by(sum(.))
 ```
+
+In sum, the model did decent on the test data falling short with a relatively high False Positive rate of 37.78%, meaning that when this model predicted up, 34/90 predictions were wrong. The accuracy ($=\frac{TP + TN}{Total}$) is 62.5%, a bit bettern than predicting a fair coin flip (assuming that directional movements of stocks follow a similar distribution). The misclassification or error rate ($=1 - Accuracy$) is 37.5%.
+
+
+```{r}
+table(pred.vals) %>% divide_by(sum(.))
+table(act.vals) %>% divide_by(sum(.))
+```
+
+The binomial model seems to heavily favor upward predictions on the test data relative to downward predictions, whereas the distribution of true values in the test data are somewhat closer a fair coin flip but still skewed towards more "Up"s than "Down"s. This statistic combined with the high Type I Error signifies that this model's accuracy might look better than it actually is simply due to the distribution of the actual outcomes. If we chose "Up" every tome, we would have 58.6% accuracy so the binomial model itself adds about 4% of accuracy to this baseline. Which is not bad, but not very robust at predicting downward movements as only 13.4% of predictions were in this direction.
 
 ## 4. Repeat Part 3 using LDA.
 
 ```{r}
-#insert r code here
+model.lda <- lda(Direction ~ Lag2, data = train)
+
+lda.vals <- predict(model.lda, test)$class
+
+tbl <- table(act.vals, lda.vals)
+
+# Confusion Matrix
+tbl
+
+# CM as %
+tbl %>% divide_by(sum(.))
 ```
 
+Oddly enough, the LDA model produces the same output as the logistic model. I suspect that this may be the case due to Lag2 being the only predictor and thus both models find the same (or roughly similar) threshold/separation boundary used for classifying as up/down.
+
+```{r}
+par(mfrow=c(1,2))
+plot(as.factor(pred.vals), test$Lag2, main = "Logistic Regression", ylab = "Lag2") %>% print
+plot(as.factor(lda.vals), test$Lag2, main = "LDA", ylab = "Lag2") %>% print
+```
+
+The plots above show that both models separate up/down predictions by a Lag2 of roughly -3.
 
 ## 5. Repeat Part 3 using QDA.
 
 ```{r}
-#insert r code here
+model.qda <- qda(Direction ~ Lag2, data = train)
+
+qda.vals <- predict(model.qda, test)$class
+
+tbl <- table(act.vals, qda.vals)
+
+# Confusion Matrix
+tbl
+
+# CM as %
+tbl %>% divide_by(sum(.))
 ```
+
+Here, the QDA model produces "Up"-only predictions resulting in a 58.7% accuracy but an even worse off False Positive rate of 41.3%. QDA is suffering here because there is one predictor in a model that should be used on multivariate data.
 
 ## 6. Repeat Part 3 using KNN with K = 1, 2, 3.
 
 ```{r}
-#insert r code here
+library(class)
+
+train$Direction %<>% as.numeric()
+test$Direction %<>% as.numeric()
+
+knn.pred.1 <- knn(train = train, test = test, train$Direction, k = 1)
+knn.pred.2 <- knn(train = train, test = test, train$Direction, k = 2)
+knn.pred.3 <- knn(train = train, test = test, train$Direction, k = 3)
+
+tbl1 <- table(act.vals, knn.pred.1)
+tbl2 <- table(act.vals, knn.pred.2)
+tbl3 <- table(act.vals, knn.pred.3)
+
+tbl1
+tbl2
+tbl3
+
+tbl1 %>% divide_by(sum(.))
+tbl2 %>% divide_by(sum(.))
+tbl3 %>% divide_by(sum(.))
 ```
 
+The KNN models appear to produce predictions that are less biased towards choosing up over down or vice versa. All three models have high accuracies of 81.7%, 83.7% and 90.4%, respectively. The KNN models are subject to lower False Positive and False Negative rates relative to the prevous Logistic, LDA and QDA models previously discussed.
 
 ## 7. Which of these methods in Parts 3, 4, 5, and 6 appears to provide the best results on this data?
 
-```{r}
-#insert r code here
-```
-
+I would suggest that the KNN model of k=3 provides the best results on the test data. As mentioned previously, there was only one statistically significant predictor (Lag2) so each of the linear models in Parts 3, 4 and 5 did not have much flexibility in terms of information available for predictions and final model fits. Given the accuracy and error rates discussed in each part, the KNN models appear to produce the best results given high accuracy, low error rates and low bias towards any one outcome.
 
 # Question 4
 
-## Write a function that works in R to gives you the parameters from a linear regression on a data set between two sets of values (in other words you only have to do the 2-D case and your output will be the coefficients beta_0 and beta_1).  Include in the output the standard error of your variables.  You cannot use the lm command in this function or any of the other built in regression models.  For example your output could be a 2x2 matrix with the parameters in the first column and the standard errors in the second column.  For up to 5 bonus points, format your output so that it displays and operates similar in function to the output of the lm command.(i.e. in a data frame that includes all potentially useful outputs)
+## Write a function that works in R to give you the parameters from a linear regression on a data set between two sets of values (in other words you only have to do the 2-D case and your output will be the coefficients beta_0 and beta_1).  Include in the output the standard error of your variables.  You cannot use the lm command in this function or any of the other built in regression models.  For example your output could be a 2x2 matrix with the parameters in the first column and the standard errors in the second column.  For up to 5 bonus points, format your output so that it displays and operates similar in function to the output of the lm command.(i.e. in a data frame that includes all potentially useful outputs)
+
+A linear regression has the form $y = \hat\beta\boldsymbol{X}$ where $\hat\beta$ is what we intend to solve for, that is the vector of coefficients corresponding to the predictors in $\boldsymbol{X}$ plus an extra column to represent the intercept $\hat\beta_0$.
+
+To estimate $\hat\beta$ we can use the closed form solution (as seen in Week 4 Slides): $$\hat\beta = (\boldsymbol{X}^T\boldsymbol{X})^{-1}\boldsymbol{X}^Ty$$
 
 
 ```{r}
-#insert r code here
+estimate_lm <- function(y, X, debug = FALSE){
+  # A function that estimates a linear model of betas and std devs corresponding to the coefficients in a linear regression model
+  
+  X %<>% as.matrix()
+  y %<>% as.numeric()
+  
+  if(!is.vector(y) || !is.matrix(X) || !is.numeric(y) || !is.numeric(X)){
+    stop("Arguments 'y' or 'X' are not numeric vectors/matrices")
+  }
+  
+  X <- cbind(rep(1, nrow(X)), X) # Prepend column of 1's to X
+  
+  if(debug) print(head(X)); print(head(y))
+  
+  b <- solve(t(X) %*% X) %*% t(X) %*% y
+  
+  y.fit <- X %*% b
+  
+  sigma_sq <- (1 / (nrow(X) - ncol(X) - 1)) * sum( (y - y.fit)^2)
+    
+  var.b <- solve(t(X) %*% X) * sigma_sq
+  
+  std_err.b <- sqrt(diag(var.b))
+  
+  Coefficients <- data.frame(Estimate = b, `Std. Error` = std_err.b)
+  
+  mdl <- list(Coefficients = Coefficients,
+              var.b = var.b)
+  
+  return(mdl)
+}
 ```
 
 ## Compare the output of your function to that of the lm command in R.
 
 ```{r}
-#insert r code here
+mdl <- estimate_lm(train$Today, train[, c("Lag1", "Lag2")], TRUE)
+print(mdl$Coefficients)
+lm(Today ~ Lag1 + Lag2, data = train) %>% summary()
 ```
+
+My `estimate_lm()` function outputs a list containing 2 components: 
+
+  1. Coefficients - a data frame containing the estimated value and the standard deviation
+  2. var.b - The covariance matrix of the estimated coefficients
+  
+The Coefficients data frame matches the output of the `lm` function in the Coefficients section.
+
 # Question 5
 ## Using the Advertising data set (Sales, TV, Radio, Newspaper), do the following:
 
 ## 1. Randomly split the data into two different pieces of roughly equal size.
 ```{r}
+df <- read.csv("Advertising.csv", stringsAsFactors = F, header = T)
+df <- df[, -1] # Drop the row numbers
+df %>% head()
 
+obs <- 1:nrow(df)
+
+idx1 <- sample(obs, nrow(df)/2, replace = F)
+idx2 <- (obs)[!(obs %in% idx)]
+
+train <- df[idx1,]
+test <- df[idx2,]
+
+dim(df)
+dim(train)
+dim(test)
 ```
+
+`train` and `test` are randomly split data frames containing observations from `df` (Advertising)
+
 ## 2. Pick one set to run a linear regression to predict sales based on all TV and Radio, and then test your accuracy using the other set
 ```{r}
+model <- lm(sales ~ TV + radio, data = train)
+pred.vals <- predict(model, newdata = test)
 
+# Calculate MSE
+mean((pred.vals - test$sales)^2)
+# Calculate RMSE
+sqrt(mean((pred.vals - test$sales)^2))
+
+res <- (pred.vals - test$sales)
+
+# Plot Residuals
+plot(res, col="blue", type="b", main = "Residuals")
+
+# QQ Plot
+{qqnorm(res)
+qqline(res, col="red")}
 ```
+
+Overall, the model does work fairly well out of sample and produces residuals that are approximately normal (following the red line), however there are instances where the deviation is large towards the distant quantiles.
+
 ## 3. Repeat the previous problem using all three predictors (including newspaper).  What do you determine from this result?
 ```{r}
+model <- lm(sales ~ TV + radio + newspaper, data = train)
+pred.vals <- predict(model, newdata = test)
 
+# Calculate MSE
+mean((pred.vals - test$sales)^2)
+# Calculate RMSE
+sqrt(mean((pred.vals - test$sales)^2))
+
+res <- (pred.vals - test$sales)
+
+# Plot Residuals
+plot(res, col="blue", type="b", main = "Residuals")
+
+# QQ Plot
+{qqnorm(res)
+qqline(res, col="red")}
 ```
+
+The results between the previous two models are quite similar, such that the addition of the `newspaper` variable really does not add any additional information that is valuable to the model. In fact, the MSE and RMSE increase as a result. We may want to investigate leaving this variable out as it is not helpful in this out of sample test.
+
 ## 4. Determine the LOOCV error for the linear regression using all three predictors.
 ```{r}
 

@@ -18,7 +18,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/ \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 
-RUN R -e "install.packages('ISLR', repos = 'http://cran.us.r-project.org')"
+RUN R -e "install.packages('ISLR', repos = 'http://cran.us.r-project.org')" & 
+	R -e "install.packages('leaps', repos = 'http://cran.us.r-project.org')"
   
 EXPOSE 8787
 
