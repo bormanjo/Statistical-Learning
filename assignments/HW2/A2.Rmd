@@ -414,7 +414,7 @@ df %>% head()
 obs <- 1:nrow(df)
 
 idx1 <- sample(obs, nrow(df)/2, replace = F)
-idx2 <- (obs)[!(obs %in% idx)]
+idx2 <- (obs)[!(obs %in% idx1)]
 
 train <- df[idx1,]
 test <- df[idx2,]
@@ -468,9 +468,14 @@ plot(res, col="blue", type="b", main = "Residuals")
 qqline(res, col="red")}
 ```
 
-The results between the previous two models are quite similar, such that the addition of the `newspaper` variable really does not add any additional information that is valuable to the model. In fact, the MSE and RMSE increase as a result. We may want to investigate leaving this variable out as it is not helpful in this out of sample test.
+The results between the previous two models are quite similar, however the addition of the `newspaper` variable really does not add any additional information that is valuable to the model. In fact, the MSE and RMSE increase as a result. We may want to investigate leaving this variable out as it is not helpful in this out of sample test.
 
 ## 4. Determine the LOOCV error for the linear regression using all three predictors.
 ```{r}
-
+model <- lm(sales ~ TV + radio + newspaper, data = df)
+numer <- sum(resid(model)^2/(1-influence(model)$hat)^2)
+denom <- nrow(df)
+numer/denom
 ```
+
+
