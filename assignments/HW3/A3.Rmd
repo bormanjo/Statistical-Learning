@@ -1,0 +1,263 @@
+---
+output: pdf_document
+---
+
+# FE590.  Assignment #3.
+
+
+## John-Craig Borman (10402229)
+## `r format(Sys.time(), "%Y-%m-%d")`
+
+
+# Instructions
+
+In this assignment, you should use R markdown to answer the questions below.  Simply type your R code into embedded chunks as shown above.
+
+When you have completed the assignment, knit the document into a PDF file, and upload _both_ the .pdf and .Rmd files to Canvas.
+
+Note that you must have LaTeX installed in order to knit the equations below.  If you do not have it installed, simply delete the questions below.
+
+# Question 1 (based on JWHT Chapter 5, Problem 8)
+
+In this problem, you will perform cross-validation on a simulated data set.
+
+You will use this personalized simulated data set for this problem:
+```{r}
+CWID = 10402229 #Place here your Campus wide ID number, this will personalize
+#your results, but still maintain the reproduceable nature of using seeds.
+#If you ever need to reset the seed in this assignment, use this as your seed
+#Papers that use -1 as this CWID variable will earn 0's so make sure you change
+#this value before you submit your work.
+personal = CWID %% 10000
+set.seed(personal)
+
+
+y <- rnorm(100)
+x <- rnorm(100)
+y <- x - 2*x^2 + rnorm(100)
+```
+
+   (a) In this data set, what is _n_ and what is _p_?
+   
+   _n_ - the number of observations in the data set (100)
+   _p_ - The number of parameters or variables in the data set (1)
+   
+   (b) Create a scatterplot of _x_ against _y_. Comment on what you find.
+   
+```{r}
+plot(x = x, y = y, main = "Scatterplot of Simulated Data")
+```
+   
+   We notice that the data approximately follows a concave (downward) parabola such that $X \in [-2.5, 2.5], Y \in [-16, 5]$, where $X$ is proportional with $Y$ from -2.5 to about 0, and then becomes inversely proportional from 0 to 2.5.
+   
+   (c) Compute the LOOCV errors that result from fitting the following four models using least squares:
+      1.  $Y = \beta_0 + \beta_1 X + \epsilon$
+      2.  $Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \epsilon$
+      3.  $Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \beta_3 X^3 + \epsilon$
+      4.  $Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \beta_3 X^3 + \beta_4 X^4 + \epsilon$
+
+First, let's do some setup. Define a data.frame to be subset per each model build in LOOCV and a vector `m.cv` to store each model's CV error.
+      
+```{r}
+library(boot)
+df = data.frame(x=x, y=y)
+m.cv = c()
+```
+
+Calculate the CV Errors for each model
+
+```{r}
+# Model 1
+m1 = glm(y ~ poly(x, 1), data = df)
+m.cv[1] = cv.glm(data = df, glmfit = m1)$delta[1]
+
+# Model 2
+m2 = glm(y ~ poly(x, 2), data = df)
+m.cv[2] = cv.glm(data = df, glmfit = m2)$delta[1]
+
+# Model 3
+m3 = glm(y ~ poly(x, 3), data = df)
+m.cv[3] = cv.glm(data = df, glmfit = m3)$delta[1]
+
+# Model 4
+m4 = glm(y ~ poly(x, 4), data = df)
+m.cv[4] = cv.glm(data = df, glmfit = m4)$delta[1]
+```
+      
+   (d) Which of the models in (c) had the smallest LOOCV error? Is this what you expected? Explain your answer.
+   
+```{r}
+m.cv_min = which.min(m.cv)
+m.cv
+m.cv_min
+m.cv[m.cv_min]
+```
+
+The second model minimizes the LOOCV error. This is not surprising since we know that the relationship between $X$ and $Y$ is downward parabolic, hence can be modeled by a quadratic fit. Model two fits a quadratic function to the data via OLS, thus it make sense that this best models the data
+   
+   (e) Comment on the statistical significance of the coefficient estimates that results from fitting each of the models in (c) using least squares. Do these results agree with the conclusions drawnbased on the cross-validation results?
+   
+```{r}
+summary(m1)
+```
+
+Model 1:
+  $X$ is statistically significant at the highest degree (~0), but also has the highest LOOCV error.
+  
+```{r}
+summary(m2)
+```
+
+Model 2:
+  $X$ and $X^2$ are statistically significant at the highest degree with the lowest LOOCV error.
+
+```{r}
+summary(m3)
+```
+
+Model 3:
+  $X$ and $X^2$ are statistically significant at the highest degree, while $X^3$ is not statistically significant with the 2nd lowest LOOCV error
+
+```{r}
+summary(m4)
+```
+
+Model 4:
+  $X$ and $X^2$ are statistically significant at the highest degree, while $X^3$ and $X^4$ are not statistically significant with the 2nd highest LOOCV error
+  
+---
+  
+*Conclusion:*
+  The statistical significance of the coefficient estimates are consistent and agree with the LOOCV results. We find that only $X$ and $X^2$ are ever statistically significant (again indiciative of a quadratic relationship between $X$ and $Y$). Further, LOOCV shows that the model with the lowest error is Model 2 where all predictors ($X$, $X^2$) are statistically significant at the highest degree.
+
+# Question 2 (based on JWTH Chapter 7, Problem 10)
+
+The question refers to the 'College' data set
+
+Load ISLR and checkout the data set:
+
+```{r}
+library(ISLR)
+attach(College)
+dim(College)
+names(College)
+```
+
+(a) Split the data into a training set and a test set.  Using out-of-state tuition as the response and the other variables as the predictors, perform subset selection (your choice on how) in order to identify a satisfactory model that uses just a subset of the predictors (if your approach suggests using all of the predictors, then follow your results and use them all).
+
+Split data into non-overlapping test and train subsets:
+
+```{r}
+obs <- 1:nrow(College)
+train.idx <- sample(x = obs, size = round(nrow(College) / 2))
+test.idx <- obs[!(obs %in% train.idx)]
+
+intersect(train.idx, test.idx) # Confirm that training and testing sets do not overlap
+
+# Subset College
+train <- College[train.idx,]
+test <- College[test.idx,]
+```
+
+Perform an exhaustive feature subset selection with the Leaps package:
+
+```{r}
+library(leaps)
+out <- regsubsets(Outstate~., data=train)
+summary(out)
+plot(out)
+```
+
+Given the results of the Linear Regression model subsets, we find that the model that minimizes BIC on the training data set contains the following features:
+  - PrivateYes  (Private)
+  - Accept 
+  - Enroll 
+  - Top10perc  
+  - Room.Board  
+  - Terminal 
+  - perc.alumni 
+  - Expend 
+
+(b) Fit a GAM on the training data, using out-of-state tuition as the response and the features selected in the previous step as the predictors, using splines of each feature with 5 df.
+
+```{r}
+library(gam)
+
+lm.m1  <- lm(Outstate ~ Private + Accept + Enroll + Top10perc + Room.Board + Terminal + perc.alumni + Expend, data = train)
+summary(lm.m1)
+
+gam.m2 <- gam(Outstate ~ Private + s(Accept, 5) + s(Enroll, 5) + s(Top10perc, 5) + s(Room.Board, 5) + s(Terminal, 5) + s(perc.alumni, 5) + s(Expend, 5), data = train)
+summary(gam.m2)
+```
+
+Private is a categorical variable (unordered), splines cannot be applied to such data. Splines, however, are applied to all other selected features with Degrees of Freedom (DF =) 5
+
+Both an OLS model and a GAM are fit above so as to benchmark the GAM to some other model solely for reference 
+
+(c) Evaluate the model obtained on the test set, and explain the results obtained
+
+Evaluating `gam.m1` on `test`:
+
+```{r}
+# Predict on test data
+m1.pred <- predict(lm.m1, newdata = test)
+m2.pred <- predict(gam.m2, newdata = test)
+
+# Get the prediction errors (residuals)
+m1.pred_resid <- test$Outstate - m1.pred
+m2.pred_resid <- test$Outstate - m2.pred
+
+# Plot the residuals
+plot(m1.pred_resid, main="OLS Model - Prediction Errors")
+plot(m2.pred_resid, main="GAM - Prediction Errors")
+
+# check the MSE
+sum(m1.pred_resid^2)/length(m1.pred_resid) # MSE
+sum(m2.pred_resid^2)/length(m2.pred_resid) # MSE
+```
+
+
+
+(d) For which variables, if any, is there evidence of a non-linear relationship with the response?  Which are probably linear?  Justify your answers.
+
+```{r}
+# Enter your R code here!
+```
+
+# Question 3 (based on JWHT Chapter 7, Problem 6)
+
+In this exercise, you will further analyze the `Wage` data set.
+
+(a) Perform polynomial regression to predict `wage` using `age.` Use cross-validation to select the optimal degree d for the polynomial. What degree was chosen? Make a plot of the resulting polynomial fit to the data.
+(b) Fit a step function to predict `wage` using `age`, and perform cross-validation to choose the optimal number of cuts. Make a plot of the fit obtained.
+
+```{r}
+# Enter your R code here!
+```
+
+# Question 4 (based on JWHT Chapter 8, Problem 8)
+
+In the lab, a classification tree was applied to the `Carseats` data set after converting Sales into a qualitative response variable. Now we will seek to predict Sales using regression trees and related approaches, treating the response as a quantitative variable.
+
+(a) Split the data set into a training set and a test set.
+(b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+(c) Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
+(d) Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the `importance()` function to determine which variables are most important.
+
+```{r}
+# Enter your R code here!
+```
+# Question 5 (based on JWTH Chapter 8, Problem 10)
+
+Use boosting (and bagging) to predict Salary in the Hitters data set
+
+(a) Remove the observations for which salary is unknown, and then log-transform the salaries
+(b) Split the data into training and testing sets for cross validation purposes.
+(c) Perform boosting on the training set with 1000 trees for a range of values of the shrinkage parameter $\lambda$.  Produce a plot with different shrinkage parameters on the x-axis and the corresponding training set MSE on the y-axis
+(d) Produce a plot similar to the last one, but this time using the test set MSE
+(e) Fit the model using two other regression techniques (from previous classes) and compare the MSE of those techniques to the results of these boosted trees.
+(f) Reproduce (c) and (d), but this time use bagging instead of boosting and compare to the boosted MSE's and the MSE's from (e)
+
+```{r}
+# Enter your R code here!
+```
