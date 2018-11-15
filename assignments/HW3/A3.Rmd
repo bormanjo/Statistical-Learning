@@ -1,5 +1,7 @@
 ---
-output: pdf_document
+output:
+  pdf_document: default
+  word_document: default
 ---
 
 # FE590.  Assignment #3.
@@ -196,7 +198,7 @@ Both an OLS model and a GAM are fit above so as to benchmark the GAM to some oth
 
 (c) Evaluate the model obtained on the test set, and explain the results obtained
 
-Evaluating `gam.m1` on `test`:
+Evaluating `lm.m1` and `gam.m2` on `test`:
 
 ```{r}
 # Predict on test data
@@ -207,57 +209,268 @@ m2.pred <- predict(gam.m2, newdata = test)
 m1.pred_resid <- test$Outstate - m1.pred
 m2.pred_resid <- test$Outstate - m2.pred
 
+par(mfrow=c(2,1))
 # Plot the residuals
-plot(m1.pred_resid, main="OLS Model - Prediction Errors")
-plot(m2.pred_resid, main="GAM - Prediction Errors")
+plot(m1.pred_resid, main="OLS Model: Prediction Errors")
+plot(m2.pred_resid, main="GAM: Prediction Errors")
 
+print(paste("OLS Residual Mean: ", mean(m1.pred_resid)))
+print(paste("GAM Residual Mean: ", mean(m2.pred_resid)))
+
+print(paste("OLS Residual Variance: ", var(m1.pred_resid)))
+print(paste("GAM Residual Variance: ", var(m2.pred_resid)))
+
+par(mfrow=c(1,2))
+
+{
+  qqnorm(m1.pred_resid, main = "OLS Model: Q-Q Residuals")
+  qqline(m1.pred_resid, col = "red")
+}
+
+{
+  qqnorm(m2.pred_resid, main = "GAM: Q-Q Residuals")
+  qqline(m2.pred_resid, col = "red")
+}
+  
 # check the MSE
-sum(m1.pred_resid^2)/length(m1.pred_resid) # MSE
-sum(m2.pred_resid^2)/length(m2.pred_resid) # MSE
+print(paste("OLS MSE: ", sum(m1.pred_resid^2)/length(m1.pred_resid)))
+print(paste("GAM MSE: ", sum(m2.pred_resid^2)/length(m2.pred_resid)))
 ```
 
+We find that the model that minimizes the MSE on the testing data is the `gam.m2` model. Comparatively, the results show that the residuals of the GAM model most closely resemble a white noise error term with mean 0, smaller variance term. Further, the GAM's MSE is less than that of the OLS model. Therefore, the GAM shows better out of sample performance than the benchmark OLS
 
 
 (d) For which variables, if any, is there evidence of a non-linear relationship with the response?  Which are probably linear?  Justify your answers.
 
 ```{r}
-# Enter your R code here!
+par(mfrow=c(1,1))
+plot(gam.m2)
 ```
+
+`plot.gam()` plots the partial terms (primary effects) of each compnent on the outcome variable. Terms like `Accept`, `Enroll`, and `perc.alumni` show approximately linear relationship with the response as their plots above show roughly constant proportional relationships throughout the domain of the input feature. `Expend` most closely resembelse a concave parabola. `Top10perc` is roughly similar to a nonlinear polynomial of the 3rd degree as it increases proportionally from [0, 40], flattens from [40, 60] and then increases again from [60, 100]. `Room.Board` also appears to be a nonlinear polynomial of the 3rd degree. For [2000, 4500], the relationship is a convex parabola while from [4500, 7000] is a concave parabola. Lastly, `Terminal` is a higher order polynomial (>= 5) since the relationship varies throughout the domain of the feature.
 
 # Question 3 (based on JWHT Chapter 7, Problem 6)
 
 In this exercise, you will further analyze the `Wage` data set.
 
 (a) Perform polynomial regression to predict `wage` using `age.` Use cross-validation to select the optimal degree d for the polynomial. What degree was chosen? Make a plot of the resulting polynomial fit to the data.
+
+Testing polynomial models of degrees 1 through 7:
+
+```{r}
+cv.error <- rep(Inf, 7)
+
+for(i in 1:7){
+  mdl <- glm(wage ~ poly(age, i), data = Wage)
+  cv.error[i] = cv.glm(data = Wage, glmfit = mdl)$delta[1]
+}
+
+plot(cv.error, type="b", main = "CV Error vs Model Degree")
+
+cv.error
+idx <- which.min(cv.error)
+idx
+cv.error[idx]
+```
+
+The model that best minimizes the error via CV is the polynomial model of degree = 6. However, from the plot above we can see that this model is likely unnecessarily complicated as each extra term beyond the 3rd degree is only marginally decreasing the CV error.
+
+Let's compare the plots of models of degree 4 and 6
+
+```{r}
+m4 <- glm(wage ~ poly(age, 4), data = Wage)
+m6 <- glm(wage ~ poly(age, 6), data = Wage)
+
+{
+  plot(y=m4$fitted.values, x=Wage$age, pch = 1, ylab = "Wage", xlab = "Age", main = "Polynomial Fits")
+  points(y=m6$fitted.values, x=Wage$age, col = "blue", pch = 10)
+  legend("topright", c("Poly 4", "Poly 6"), col = c("black", "blue"), pch = c(1, 10))
+}
+```
+
 (b) Fit a step function to predict `wage` using `age`, and perform cross-validation to choose the optimal number of cuts. Make a plot of the fit obtained.
 
 ```{r}
-# Enter your R code here!
+library(tree)
+
+# Model regression tree
+mdl <- tree(wage~age, data = Wage)
+summary(mdl)
+
+# Plot the Tree
+{
+  plot(mdl)
+  text(mdl, pretty = 1)
+}
+
+# Run K-Fold CV
+cv.mdl <- cv.tree(mdl)
+plot(cv.mdl$size, cv.mdl$dev, type="b", main="CV Error vs Cuts", ylab="Error", xlab="Cuts")
 ```
+
+According to the plot above. Three cuts minimizes CV error, however this improvement is marginal beyond the second cut.
 
 # Question 4 (based on JWHT Chapter 8, Problem 8)
 
 In the lab, a classification tree was applied to the `Carseats` data set after converting Sales into a qualitative response variable. Now we will seek to predict Sales using regression trees and related approaches, treating the response as a quantitative variable.
 
 (a) Split the data set into a training set and a test set.
+
+```{r}
+obs <- 1:nrow(Carseats)
+train.idx <- sample(obs, size = round(length(obs)/2))
+test.idx <- obs[!(obs %in% train.idx)]
+
+intersect(train.idx, test.idx) # Should be Null
+
+train <- Carseats[train.idx,]
+test <- Carseats[test.idx,]
+```
+
 (b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+
+```{r}
+mdl <- tree(Sales~., data = train)
+
+{
+  plot(mdl)
+  text(mdl, pretty = 0, cex = 0.8)
+}
+
+summary(mdl)
+```
+
+The MSE (residual mean deviance in the summary above) is 2.053. The `ShelveLoc` and `Price` variables have the most significant impact on the outcome as they are the first and second variables to partition the space, respectively. 
+
 (c) Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
+
+```{r}
+cv.mdl <- cv.tree(mdl)
+plot(cv.mdl$size, cv.mdl$dev, type="b", main="CV Error vs Cuts", ylab="Error", xlab="Cuts")
+```
+
+Above we can see that the number of cuts locally minimizes the CV error at `nCuts` = 6. Error then increases, plateaus and steadily declines as the number of cuts increase. Thus, let's examine the tree with 6 cuts:
+
+```{r}
+mdl.pruned <- prune.tree(mdl, best = 6)
+mean( (test$Sales - predict(mdl, newdata = test))^2)        # MSE Non-Pruned Tree
+mean( (test$Sales - predict(mdl.pruned, newdata = test))^2) # MSE Pruned Tree
+```
+
+Pruning does not improve the MSE of the model, which is intuitive since we are removing decision-making from the model. Though MSE is increased, we are reducing the amount of overfitting in the model.
+
 (d) Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the `importance()` function to determine which variables are most important.
 
 ```{r}
-# Enter your R code here!
+library(randomForest)
+mdl.bag <- randomForest(Sales ~ ., data = train, importance=TRUE)
+mdl.bag
+importance(mdl.bag)
+varImpPlot(mdl.bag)
 ```
+
+The variable importance plots affirm that `Price` and `ShelveLoc` are again the most important features as removing them would subject the model to a high % increase in MSE.
+
+The new MSE is:
+
+```{r}
+mean((test$Sales - predict(mdl.bag, newdata = test))^2)
+```
+
+
 # Question 5 (based on JWTH Chapter 8, Problem 10)
 
 Use boosting (and bagging) to predict Salary in the Hitters data set
 
 (a) Remove the observations for which salary is unknown, and then log-transform the salaries
+
+```{r}
+library(gbm)
+df <- Hitters[!is.na(Hitters$Salary),]
+df$Salary <- log(df$Salary)
+```
+
 (b) Split the data into training and testing sets for cross validation purposes.
+
+```{r}
+obs <- 1:nrow(df)
+train.idx <- sample(obs, size = round(length(obs)/2))
+test.idx <- obs[!(obs %in% train.idx)]
+
+intersect(train.idx, test.idx) # Should be Null
+
+train <- df[train.idx,]
+test <- df[test.idx,]
+```
+
 (c) Perform boosting on the training set with 1000 trees for a range of values of the shrinkage parameter $\lambda$.  Produce a plot with different shrinkage parameters on the x-axis and the corresponding training set MSE on the y-axis
+
+```{r message=FALSE, warning=FALSE}
+lambda <- seq(0, 1, by = 0.05)
+MSE <- rep(Inf, 20)
+
+for(i in 1:length(lambda)){
+  mdl.boost <- gbm(Salary~., data = train, n.trees = 1000, shrinkage = lambda[i], distribution = "gaussian")
+  MSE[i] <- mean( (test$Salary - predict(mdl.boost, newdata = train, n.trees = 1000))^2)
+}
+
+plot(y = MSE, x = lambda, main = "MSE vs  Shrinkage | In-Sample", type = "b")
+```
+
 (d) Produce a plot similar to the last one, but this time using the test set MSE
+
+```{r}
+MSE <- rep(Inf, 20)
+
+for(i in 1:length(lambda)){
+  mdl.boost <- gbm(Salary~., data = train, n.trees = 1000, shrinkage = lambda[i], distribution = "gaussian")
+  MSE[i] <- mean( (test$Salary - predict(mdl.boost, newdata = test, n.trees = 1000))^2)
+}
+
+plot(y = MSE, x = lambda, main = "MSE vs  Shrinkage | OOS", type = "b")
+```
+
 (e) Fit the model using two other regression techniques (from previous classes) and compare the MSE of those techniques to the results of these boosted trees.
+
+```{r}
+rsubs <- regsubsets(Salary ~ ., data = train)
+plot(rsubs)
+```
+
+Utilizing regression subsets to select features based on the best linear regression model, the best model is: 
+$$Salary = \beta_0 + \beta_1 Runs + \beta_2 CHits$$
+
+Let's build an OLS and GAM from this selected model:
+
+```{r}
+mdl.lm <- lm(Salary ~ Runs + CHits, data = train)
+mdl.gam <- gam(Salary ~ s(Runs, 5) + s(CHits, 5), data = train)
+```
+
+Now testing on OOS, we have MSEs
+
+```{r}
+mean((test$Salary - predict(mdl.lm, newdata = test))^2) # OLS MSE
+mean((test$Salary - predict(mdl.gam, newdata = test))^2)# GAM MSE
+min(MSE)  # GBM MSE
+```
+
+Despite utilizing feature selection before building OLS and GAMs, the OOS MSE of the boosted trees is still superior. This is given that we use the MSE of the error minimizing $\lambda$-shrinkage parameter.
+
 (f) Reproduce (c) and (d), but this time use bagging instead of boosting and compare to the boosted MSE's and the MSE's from (e)
 
 ```{r}
-# Enter your R code here!
+mdl.bag <- randomForest(Salary ~ ., data = train, importance=TRUE)
+mdl.bag
 ```
+
+Now we have:
+
+```{r}
+mean((test$Salary - predict(mdl.lm, newdata = test))^2) # OLS MSE
+mean((test$Salary - predict(mdl.gam, newdata = test))^2)# GAM MSE
+min(MSE)                                                # GBM MSE
+mean((test$Salary - predict(mdl.bag, newdata = test))^2)# RF MSE
+```
+
+Finally, we see that the bagging method (randomForest) outdoes the previously superior boosting method with the lowest MSE.

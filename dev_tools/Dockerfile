@@ -1,4 +1,4 @@
-FROM rocker/tidyverse:latest
+FROM rocker/verse
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends  \
@@ -18,8 +18,13 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/ \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 
-RUN R -e "install.packages('ISLR', repos = 'http://cran.us.r-project.org')" & 
-	R -e "install.packages('leaps', repos = 'http://cran.us.r-project.org')"
+RUN R -e "install.packages('ISLR', repos = 'http://cran.us.r-project.org')"
+RUN	R -e "install.packages('boot', repos = 'http://cran.us.r-project.org')" 
+RUN	R -e "install.packages('gam', repos = 'http://cran.us.r-project.org')" 
+RUN	R -e "install.packages('tree', repos = 'http://cran.us.r-project.org')" 
+RUN	R -e "install.packages('rpart', repos = 'http://cran.us.r-project.org')" 
+RUN	R -e "install.packages('randomForest', repos = 'http://cran.us.r-project.org')" 
+RUN	R -e "install.packages('leaps', repos = 'http://cran.us.r-project.org')"
   
 EXPOSE 8787
 
